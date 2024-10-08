@@ -9,45 +9,44 @@ module Main =
     let parseTxt (filePath: string) =
         seq {
             use reader = new StreamReader(filePath, System.Text.Encoding.UTF8)
+
             while not reader.EndOfStream do
                 yield reader.ReadLine()
         }
         |> String.concat " "
-    
-    let lowercase (culture: CultureInfo) (text: string) =
-        text.ToLower(culture)
-        
+
+    let lowercase (culture: CultureInfo) (text: string) = text.ToLower(culture)
+
     let tokenise (line: string) =
-        line.Split([|' '|], System.StringSplitOptions.RemoveEmptyEntries)
+        let splitters = Regex("[\'\-]", RegexOptions.Compiled)
+        let firstPass = splitters.Replace(line, ", ")
+
+        firstPass.Split([| ' ' |], System.StringSplitOptions.RemoveEmptyEntries)
         |> Array.toList
-        
+
     let removeSymbols (word: string) =
         let regex = Regex("[^a-zA-Zà-ÿÀ-Ÿ]", RegexOptions.Compiled)
         regex.Replace(word, "")
-    
+
     let clean (tokenList: string list) =
-        tokenList
-        |> List.map removeSymbols
-        |> List.distinct
-        |> List.sort
-        
+        tokenList |> List.map removeSymbols |> List.distinct |> List.sort
+
     let writeCsv (outputPath: string) (lines: seq<string>) =
         use writer = new StreamWriter(outputPath)
-        lines
-        |> Seq.iter (fun line -> writer.WriteLine(line))
-    
+        lines |> Seq.iter (fun line -> writer.WriteLine(line))
+
     let processFile (filePath: string) (culture: CultureInfo) =
         filePath
         |> parseTxt
         |> lowercase culture
         |> tokenise
         |> clean
-        |> String.concat ","
-    
+        |> fun cleaned -> (filePath + " ") :: cleaned |> String.concat ","
+
     [<EntryPoint>]
     let main _ =
         printfn "Data Pipeline v0.1.0"
-        
+
         let culture = CultureInfo("fr-FR")
         let inputFolder = "./samples"
         let outputFile = "./output.csv"
